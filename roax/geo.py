@@ -23,9 +23,11 @@ def _str_encode(schema, value):
 def _str_decode(schema, value):
     try:
         result = wkt.loads(value)
-    except ValueError as ve:
-        raise s.SchemaError(str(ve)) from ve
-    schema.validate(result)
+        schema.validate(result)
+    except Exception as e:
+        raise s.SchemaError(
+            f"invalid WKT representation of {schema.__class__.__name__}"
+        ) from e
     return result
 
 
@@ -37,9 +39,11 @@ def _bin_encode(schema, value):
 def _bin_decode(schema, value):
     try:
         result = wkb.loads(value)
-    except ValueError as ve:
-        raise s.SchemaError(str(ve)) from ve
-    schema.validate(result)
+        schema.validate(result)
+    except Exception as e:
+        raise s.SchemaError(
+            f"invalid WKB representation of {schema.__class__.__name__}"
+        ) from e
     return result
 
 

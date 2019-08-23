@@ -38,7 +38,7 @@ def test_Point_str_invalid_decode():
 
 def test_Point_bin_invalid_decode():
     with pytest.raises(s.SchemaError):
-        geo.Point().bin_encode(b"1234567890")
+        geo.Point().bin_decode(b"1234567890")
 
 
 def test_Point_invalid_longitude():
