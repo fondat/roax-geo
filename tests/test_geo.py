@@ -31,6 +31,16 @@ def test_Point_invalid_type():
         geo.Point().validate({"type": "Zoink", "coordinates": [100.0, 0.0]})
 
 
+def test_Point_str_invalid_decode():
+    with pytest.raises(s.SchemaError):
+        geo.Point().str_decode("POINT(X Y)")
+
+
+def test_Point_bin_invalid_decode():
+    with pytest.raises(s.SchemaError):
+        geo.Point().bin_encode(b"1234567890")
+
+
 def test_Point_invalid_longitude():
     with pytest.raises(s.SchemaError):
         geo.Point().validate({"type": "Point", "coordinates": [-190.0, 0.0]})
