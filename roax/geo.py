@@ -1,5 +1,7 @@
 """Module that provides schema for GeoJSON data structures."""
 
+import geomet.wkt as wkt
+import geomet.wkb as wkb
 import roax.schema as s
 
 
@@ -13,6 +15,34 @@ class _Object(s.dict):
         self.required.add("type")
 
 
+def _str_encode(schema, value):
+    schema.validate(value)
+    return wkt.dumps(value)
+
+
+def _str_decode(schema, value):
+    try:
+        result = wkt.loads(value)
+    except ValueError as ve:
+        raise s.SchemaError(str(ve)) from ve
+    schema.validate(result)
+    return result
+
+
+def _bin_encode(schema, value):
+    schema.validate(value)
+    return wkb.dumps(value)
+
+
+def _bin_decode(schema, value):
+    try:
+        result = wkb.loads(value)
+    except ValueError as ve:
+        raise s.SchemaError(str(ve)) from ve
+    schema.validate(result)
+    return result
+
+
 class _Geometry(_Object):
     """Base class for all geometry objects."""
 
@@ -20,6 +50,18 @@ class _Geometry(_Object):
         super().__init__(**kwargs)
         self.properties["coordinates"] = coordinates_schema
         self.required.add("coordinates")
+
+    def str_encode(self, value):
+        return _str_encode(self, value)
+
+    def str_decode(self, value):
+        return _str_decode(self, value)
+
+    def bin_encode(self, value):
+        return _bin_encode(self, value)
+
+    def bin_decode(self, value):
+        return _bin_decode(self, value)
 
 
 class Point(_Geometry):
@@ -130,6 +172,18 @@ class GeometryCollection(_Object):
         super().__init__(**kwargs)
         self.properties["geometries"] = s.list(Geometry())
         self.required.add("geometries")
+
+    def str_encode(self, value):
+        return _str_encode(self, value)
+
+    def str_decode(self, value):
+        return _str_decode(self, value)
+
+    def bin_encode(self, value):
+        return _bin_encode(self, value)
+
+    def bin_decode(self, value):
+        return _bin_decode(self, value)
 
 
 class Geometry(s.one_of):
