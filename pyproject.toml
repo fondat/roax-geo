@@ -5,7 +5,7 @@ target-version = ['py36', 'py37']
 [tool.poetry]
 name = "roax-geo"
 module = "roax.geo"
-version = "1.0.0"
+version = "1.0.1"
 description = "Geographic extension for Roax."
 readme = "README.md"
 authors = ["Paul Bryan <pbryan@anode.ca>"]
