@@ -8,10 +8,16 @@ import roax.schema as s
 class _Object(s.dict):
     """Base class for all GeoJSON objects."""
 
-    def __init__(self, **kwargs):
-        super().__init__(properties={}, **kwargs)
-        self.properties["type"] = s.str(enum={self.__class__.__name__})
-        self.properties["bbox"] = s.list(items=s.float(), min_items=4)
+    def __init__(self, properties={}, required=set(), **kwargs):
+        super().__init__(
+            properties={
+                "type": s.str(enum={self.__class__.__name__}),
+                "bbox": s.list(items=s.float(), min_items=4),
+                **properties,
+            },
+            required={"type"}.union(set(required)),
+            **kwargs,
+        )
         self.required.add("type")
 
 
@@ -23,6 +29,8 @@ def _str_encode(schema, value):
 def _str_decode(schema, value):
     try:
         result = wkt.loads(value)
+        if not schema.additional:
+            result = schema.strip(result)
         schema.validate(result)
     except Exception as e:
         raise s.SchemaError(
@@ -39,6 +47,8 @@ def _bin_encode(schema, value):
 def _bin_decode(schema, value):
     try:
         result = wkb.loads(value)
+        if not schema.additional:
+            result = schema.strip(result)
         schema.validate(result)
     except Exception as e:
         raise s.SchemaError(
@@ -50,10 +60,12 @@ def _bin_decode(schema, value):
 class _Geometry(_Object):
     """Base class for all geometry objects."""
 
-    def __init__(self, coordinates_schema, **kwargs):
-        super().__init__(**kwargs)
-        self.properties["coordinates"] = coordinates_schema
-        self.required.add("coordinates")
+    def __init__(self, coordinates_schema, properties={}, required=set(), **kwargs):
+        super().__init__(
+            properties={"coordinates": coordinates_schema, **properties},
+            required={"coordinates"}.union(set(required)),
+            **kwargs,
+        )
 
     def str_encode(self, value):
         return _str_encode(self, value)
@@ -172,10 +184,12 @@ class _MultiPolygonCoordinates(s.list):
 class GeometryCollection(_Object):
     """A collection of geometries."""
 
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        self.properties["geometries"] = s.list(Geometry())
-        self.required.add("geometries")
+    def __init__(self, properties={}, required=set(), **kwargs):
+        super().__init__(
+            properties={"geometries": s.list(Geometry()), **properties},
+            required={"geometries"}.union(set(required)),
+            **kwargs,
+        )
 
     def str_encode(self, value):
         return _str_encode(self, value)
@@ -210,19 +224,24 @@ class Geometry(s.one_of):
 class Feature(_Object):
     """A spatially bounded thing."""
 
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        self.properties["geometry"] = Geometry(nullable=True)
-        self.properties["properties"] = s.dict(
-            properties={}, additional_properties=True, nullable=True
+    def __init__(self, properties={}, required=set(), **kwargs):
+        super().__init__(
+            properties={
+                "geometry": Geometry(nullable=True),
+                "properties": s.dict(properties={}, additional=True, nullable=True),
+                **properties,
+            },
+            required={"geometry", "properties"}.union(set(required)),
+            **kwargs,
         )
-        self.required.update({"geometry", "properties"})
 
 
 class FeatureCollection(_Object):
     """A collection of features."""
 
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        self.properties["features"] = s.list(Feature())
-        self.required.add("features")
+    def __init__(self, properties={}, required=set(), **kwargs):
+        super().__init__(
+            properties={"features": s.list(Feature()), **properties},
+            required={"features"}.union(set(required)),
+            **kwargs,
+        )

@@ -26,6 +26,12 @@ def test_Point_str_bin_bbox():
     assert schema.bin_decode(schema.bin_encode(value)) == _point
 
 
+def test_Point_bin_meta():
+    geo.Point().bin_decode(
+        b"\x01\x01\x00\x00 \xe6\x10\x00\x00\x00\x00\x00\x00\x00\x00Y@\x00\x00\x00\x00\x00\x00\x00\x00"
+    )
+
+
 def test_Point_invalid_type():
     with pytest.raises(s.SchemaError):
         geo.Point().validate({"type": "Zoink", "coordinates": [100.0, 0.0]})
