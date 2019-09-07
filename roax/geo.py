@@ -112,13 +112,15 @@ class _LineStringCoordinates(s.list):
 
 
 class Polygon(_Geometry):
-    """A linear ring and zero or more interior linear rings."""
+    """
+    A linear ring and zero or more interior linear rings.
+
+    Parameters:
+    • min_rings: Minimum number of linear rings.
+    • max_rings: Maximum number of linear rings.
+    """
 
     def __init__(self, min_rings=1, max_rings=None, **kwargs):
-        """
-        :param min_rings: Minimum number of linear rings.
-        :param max_rings: Maximum number of linear rings.
-        """
         if min_rings < 1:
             raise ValueError("min rings must be ≥ 1")
         if max_rings is not None and max_rings < min_rings:

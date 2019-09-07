@@ -1,4 +1,4 @@
-# roax-geo
+# Roax-Geo
 
 [![PyPI](https://badge.fury.io/py/roax-geo.svg)](https://badge.fury.io/py/roax-geo)
 [![License](https://img.shields.io/github/license/roax/roax-geo.svg)](https://github.com/roax/roax-geo/blob/master/LICENSE)
@@ -7,5 +7,17 @@
 [![Codecov](https://codecov.io/gh/roax/roax-geo/branch/master/graph/badge.svg)](https://codecov.io/gh/roax/roax-geo)
 [![Black](https://img.shields.io/badge/code%20style-black-black.svg)](https://github.com/psf/black)
 
-Roax-Geo
-Geographical extension for Roax. 
+Roax-Geo: Geographical extension for Roax. 
+
+## Develop
+
+```
+poetry install
+poetry run pre-commit install
+```
+
+## Test
+
+```
+poetry run pytest
+```

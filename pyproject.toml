@@ -9,7 +9,7 @@ target-version = ['py36', 'py37']
 [tool.poetry]
 name = "roax-geo"
 module = "roax.geo"
-version = "1.1.0"
+version = "1.1.1"
 description = "Geographic extension for Roax."
 readme = "README.md"
 authors = ["Paul Bryan <pbryan@anode.ca>"]
@@ -28,7 +28,7 @@ packages = [
 
 [tool.poetry.dependencies]
 python = "^3.6 <3.8"
-roax = "^1.5"
+roax = "^1.9"
 geomet = "^0.2"
 
 [tool.poetry.dev-dependencies]
