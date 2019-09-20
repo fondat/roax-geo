@@ -4,7 +4,7 @@ build-backend = "poetry.masonry.api"
 
 [tool.black]
 line-length = 88
-target-version = ['py36', 'py37']
+target-version = ['py37']
 
 [tool.poetry]
 name = "roax-geo"
@@ -27,7 +27,7 @@ packages = [
 ]
 
 [tool.poetry.dependencies]
-python = "^3.6 <3.8"
+python = "^3.7 <3.8"
 roax = "^1.9"
 geomet = "^0.2"
 
