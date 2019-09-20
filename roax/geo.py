@@ -1,90 +1,94 @@
 """Module that provides schema for GeoJSON data structures."""
 
+import geojson
 import geomet.wkt as wkt
 import geomet.wkb as wkb
 import roax.schema as s
 
 
-class _Object(s.dict):
+class _Object(s.type):
     """Base class for all GeoJSON objects."""
 
-    def __init__(self, properties={}, required=set(), **kwargs):
-        super().__init__(
-            properties={
+    def __init__(
+        self,
+        *,
+        python_type,
+        content_type="application/json",
+        props={},
+        required=set(),
+        additional=False,
+        **kwargs,
+    ):
+        super().__init__(python_type=python_type, content_type=content_type, **kwargs)
+        self.schema = s.dict(
+            {
                 "type": s.str(enum={self.__class__.__name__}),
                 "bbox": s.list(items=s.float(), min_items=4),
-                **properties,
+                **props,
             },
-            required={"type"}.union(set(required)),
-            **kwargs,
+            required={"type"}.union(required),
+            additional=additional,
         )
-        self.required.add("type")
 
+    def validate(self, value):
+        super().validate(value)
+        return self.schema.validate(value.__geo_interface__)
 
-def _str_encode(schema, value):
-    schema.validate(value)
-    return wkt.dumps(value)
+    @property
+    def json_schema(self):
+        return self.schema.json_schema
 
+    def json_encode(self, value):
+        self.validate(value)
+        return value.__geo_interface__
 
-def _str_decode(schema, value):
-    try:
-        result = wkt.loads(value)
-        if not schema.additional:
-            result = schema.strip(result)
-        schema.validate(result)
-    except Exception as e:
-        raise s.SchemaError(
-            f"invalid WKT representation of {schema.__class__.__name__}"
-        ) from e
-    return result
+    def json_decode(self, value):
+        result = self.python_type.to_instance(value)
+        self.validate(result)
+        return result
 
+    def str_encode(self, value):
+        return wkt.dumps(self.json_encode(value))
 
-def _bin_encode(schema, value):
-    schema.validate(value)
-    return wkb.dumps(value)
+    def str_decode(self, value):
+        try:
+            return self.json_decode(self.schema.strip(wkt.loads(value)))
+        except Exception as e:
+            raise s.SchemaError(
+                f"invalid WKT representation of {self.__class__.__name__}"
+            ) from e
 
+    def bin_encode(self, value):
+        return wkb.dumps(self.json_encode(value))
 
-def _bin_decode(schema, value):
-    try:
-        result = wkb.loads(value)
-        if not schema.additional:
-            result = schema.strip(result)
-        schema.validate(result)
-    except Exception as e:
-        raise s.SchemaError(
-            f"invalid WKB representation of {schema.__class__.__name__}"
-        ) from e
-    return result
+    def bin_decode(self, value):
+        try:
+            return self.json_decode(self.schema.strip(wkb.loads(value)))
+        except Exception as e:
+            raise s.SchemaError(
+                f"invalid WKB representation of {self.__class__.__name__}"
+            ) from e
 
 
 class _Geometry(_Object):
     """Base class for all geometry objects."""
 
-    def __init__(self, coordinates_schema, properties={}, required=set(), **kwargs):
+    def __init__(
+        self, python_type, coordinates_schema, props={}, required=set(), **kwargs
+    ):
         super().__init__(
-            properties={"coordinates": coordinates_schema, **properties},
+            python_type=python_type,
+            props={"coordinates": coordinates_schema, **props},
             required={"coordinates"}.union(set(required)),
             **kwargs,
         )
-
-    def str_encode(self, value):
-        return _str_encode(self, value)
-
-    def str_decode(self, value):
-        return _str_decode(self, value)
-
-    def bin_encode(self, value):
-        return _bin_encode(self, value)
-
-    def bin_decode(self, value):
-        return _bin_decode(self, value)
 
 
 class Point(_Geometry):
     """A geographical point."""
 
     def __init__(self, **kwargs):
-        super().__init__(_PointCoordinates(), **kwargs)
+        super().__init__(geojson.Point, _PointCoordinates(), **kwargs)
 
 
 class _PointCoordinates(s.list):
@@ -103,7 +107,7 @@ class LineString(_Geometry):
     """A connected sequence of points."""
 
     def __init__(self, **kwargs):
-        super().__init__(_LineStringCoordinates(), **kwargs)
+        super().__init__(geojson.LineString, _LineStringCoordinates(), **kwargs)
 
 
 class _LineStringCoordinates(s.list):
@@ -126,7 +130,9 @@ class Polygon(_Geometry):
         if max_rings is not None and max_rings < min_rings:
             raise ValueError("max_rings must be ≥ min_rings")
         super().__init__(
-            _PolygonCoordinates(min_items=min_rings, max_items=max_rings), **kwargs
+            geojson.Polygon,
+            _PolygonCoordinates(min_items=min_rings, max_items=max_rings),
+            **kwargs,
         )
 
 
@@ -151,7 +157,7 @@ class MultiPoint(_Geometry):
     """A collection of points."""
 
     def __init__(self, **kwargs):
-        super().__init__(_MultiPointCoordinates(), **kwargs)
+        super().__init__(geojson.MultiPoint, _MultiPointCoordinates(), **kwargs)
 
 
 class _MultiPointCoordinates(s.list):
@@ -163,7 +169,9 @@ class MultiLineString(_Geometry):
     """A collection of line strings."""
 
     def __init__(self, **kwargs):
-        super().__init__(_MultiLineStringCoordinates(), **kwargs)
+        super().__init__(
+            geojson.MultiLineString, _MultiLineStringCoordinates(), **kwargs
+        )
 
 
 class _MultiLineStringCoordinates(s.list):
@@ -175,7 +183,7 @@ class MultiPolygon(_Geometry):
     """A collection of polygons."""
 
     def __init__(self, **kwargs):
-        super().__init__(_MultiPolygonCoordinates(), **kwargs)
+        super().__init__(geojson.MultiPolygon, _MultiPolygonCoordinates(), **kwargs)
 
 
 class _MultiPolygonCoordinates(s.list):
@@ -186,28 +194,17 @@ class _MultiPolygonCoordinates(s.list):
 class GeometryCollection(_Object):
     """A collection of geometries."""
 
-    def __init__(self, properties={}, required=set(), **kwargs):
+    def __init__(self, props={}, required=set(), **kwargs):
         super().__init__(
-            properties={"geometries": s.list(Geometry()), **properties},
+            python_type=geojson.GeometryCollection,
+            props={"geometries": s.list(Geometry().schema), **props},
             required={"geometries"}.union(set(required)),
             **kwargs,
         )
 
-    def str_encode(self, value):
-        return _str_encode(self, value)
-
-    def str_decode(self, value):
-        return _str_decode(self, value)
-
-    def bin_encode(self, value):
-        return _bin_encode(self, value)
-
-    def bin_decode(self, value):
-        return _bin_decode(self, value)
-
 
 class Geometry(s.one_of):
-    """One of: `Point`, `MultiPoint`, `LineString`, `MultiLineString`, `Polygon`, `MultiPolygon`."""
+    """One of: Point, MultiPoint, LineString, MultiLineString, Polygon, MultiPolygon."""
 
     def __init__(self, **kwargs):
         super().__init__(
@@ -221,17 +218,20 @@ class Geometry(s.one_of):
             },
             **kwargs,
         )
+        self.schema = s.one_of([sch.schema for sch in self.schemas], **kwargs)
 
 
 class Feature(_Object):
     """A spatially bounded thing."""
 
-    def __init__(self, properties={}, required=set(), **kwargs):
+    def __init__(self, props={}, required=set(), **kwargs):
         super().__init__(
-            properties={
-                "geometry": Geometry(nullable=True),
-                "properties": s.dict(properties={}, additional=True, nullable=True),
-                **properties,
+            python_type=geojson.Feature,
+            props={
+                "geometry": Geometry(nullable=True).schema,
+                "properties": s.dict(props={}, additional=True, nullable=True),
+                "id": s.one_of({s.str(), s.int(), s.float()}),
+                **props,
             },
             required={"geometry", "properties"}.union(set(required)),
             **kwargs,
@@ -241,9 +241,10 @@ class Feature(_Object):
 class FeatureCollection(_Object):
     """A collection of features."""
 
-    def __init__(self, properties={}, required=set(), **kwargs):
+    def __init__(self, props={}, required=set(), **kwargs):
         super().__init__(
-            properties={"features": s.list(Feature()), **properties},
+            python_type=geojson.FeatureCollection,
+            props={"features": s.list(Feature().schema), **props},
             required={"features"}.union(set(required)),
             **kwargs,
         )
