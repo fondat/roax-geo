@@ -43,9 +43,8 @@ class _Object(s.type):
         return value.__geo_interface__
 
     def json_decode(self, value):
-        result = self.python_type.to_instance(value)
-        self.validate(result)
-        return result
+        self.schema.validate(value)  # validate first to get nicer error messages
+        return self.python_type.to_instance(value)
 
     def str_encode(self, value):
         return wkt.dumps(self.json_encode(value))
@@ -73,13 +72,11 @@ class _Object(s.type):
 class _Geometry(_Object):
     """Base class for all geometry objects."""
 
-    def __init__(
-        self, python_type, coordinates_schema, props={}, required=set(), **kwargs
-    ):
+    def __init__(self, python_type, coordinates_schema, **kwargs):
         super().__init__(
             python_type=python_type,
-            props={"coordinates": coordinates_schema, **props},
-            required={"coordinates"}.union(set(required)),
+            props={"coordinates": coordinates_schema},
+            required={"coordinates"},
             **kwargs,
         )
 
@@ -194,11 +191,11 @@ class _MultiPolygonCoordinates(s.list):
 class GeometryCollection(_Object):
     """A collection of geometries."""
 
-    def __init__(self, props={}, required=set(), **kwargs):
+    def __init__(self, **kwargs):
         super().__init__(
             python_type=geojson.GeometryCollection,
-            props={"geometries": s.list(Geometry().schema), **props},
-            required={"geometries"}.union(set(required)),
+            props={"geometries": s.list(Geometry().schema)},
+            required={"geometries"},
             **kwargs,
         )
 
@@ -224,16 +221,15 @@ class Geometry(s.one_of):
 class Feature(_Object):
     """A spatially bounded thing."""
 
-    def __init__(self, props={}, required=set(), **kwargs):
+    def __init__(self, **kwargs):
         super().__init__(
             python_type=geojson.Feature,
             props={
                 "geometry": Geometry(nullable=True).schema,
                 "properties": s.dict(props={}, additional=True, nullable=True),
                 "id": s.one_of({s.str(), s.int(), s.float()}),
-                **props,
             },
-            required={"geometry", "properties"}.union(set(required)),
+            required={"geometry", "properties"},
             **kwargs,
         )
 
